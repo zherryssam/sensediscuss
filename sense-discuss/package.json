@@ -1,7 +1,0 @@
-{
-  "name": "sense-discuss",
-  "version": "2.0.0",
-  "description": "오감이 사라진다면? - 실시간 감각 중요도 순위 수업 (GitHub Pages + Google Apps Script)",
-  "scripts": { "dev": "node dev-server.js" },
-  "license": "MIT"
-}
