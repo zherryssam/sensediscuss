@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오감 중요도 수업 - 교사</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-role="host">
+<main id="join" class="join">
+  <div class="logo"><span>👁️</span><span>👂</span><span>👃</span><span>👅</span><span>✋</span></div>
+  <h1>오감이 사라진다면?</h1>
+  <p class="sub">교사용 화면 · 수업을 열고 진행하세요</p>
+  <form class="card form" onsubmit="return false">
+    <label>교사 비밀번호<input id="pwInput" type="password" autocomplete="current-password" placeholder="설정하지 않았다면 비워 두세요"></label>
+    <button id="createBtn" class="btn primary big" type="submit">새 수업 열기</button>
+  </form>
+</main>
+<div id="app" hidden></div>
+<div id="toast" class="toast" role="status"></div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
