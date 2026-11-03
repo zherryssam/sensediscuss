@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오감 중요도 수업 - 학생</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-role="student">
+<main id="join" class="join">
+  <div class="logo"><span>👁️</span><span>👂</span><span>👃</span><span>👅</span><span>✋</span></div>
+  <h1>오감이 사라진다면?</h1>
+  <p class="sub">우리 반이 생각하는 가장 중요한 감각은?</p>
+  <form id="joinForm" class="card form">
+    <label>방 코드<input id="codeInput" inputmode="numeric" maxlength="4" placeholder="선생님이 알려준 4자리 숫자" autocomplete="off" required></label>
+    <label>내 이름<input id="nameInput" maxlength="8" placeholder="닉네임 (8자 이내)" autocomplete="off" required></label>
+    <button class="btn primary big" type="submit">입장하기</button>
+  </form>
+</main>
+<div id="app" hidden></div>
+<div id="toast" class="toast" role="status"></div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
