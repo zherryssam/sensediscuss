@@ -47,21 +47,84 @@
     if (j.error) throw new Error(j.error);
     return j;
   }
-  const post = body => call('POST', body);
+
+  /* ---------- 로딩 표시 ----------
+   * 서버(Apps Script) 응답을 기다리는 동안: 상단 진행 막대 + 누른 버튼에 스피너(중복 클릭 차단)
+   * + 1.2초 넘게 걸리면 안내 문구. 교사 화면은 처리 중에 다른 조작 버튼도 잠시 잠가요. */
+  let inflight = 0;
+  let lastTarget = null, lastTargetAt = 0;
+  let hintTimer = null;
+
+  document.addEventListener('click', e => {
+    if (e.target.closest('.is-loading')) { e.preventDefault(); e.stopPropagation(); return; } // 처리 중인 버튼은 다시 눌리지 않게
+    const b = e.target.closest('button, .pick, .opt, [role="button"]');
+    if (b) { lastTarget = b; lastTargetAt = Date.now(); }
+  }, true);
+
+  const recentTarget = () => (Date.now() - lastTargetAt < 1500 && document.contains(lastTarget) ? lastTarget : null);
+
+  function netHint(on) {
+    const el = $('#netHint');
+    clearTimeout(hintTimer);
+    el.classList.toggle('show', on);
+    if (!on) return;
+    el.textContent = '⏳ 서버 응답을 기다리는 중…';
+    hintTimer = setTimeout(() => { el.textContent = '⏳ 서버가 느려요. 조금만 더 기다려 주세요 (처음엔 몇 초 걸릴 수 있어요)'; }, 4000);
+  }
+
+  async function tracked(fn, el) {
+    if (++inflight === 1) {
+      document.body.classList.add('busy');
+      clearTimeout(tracked.t);
+      tracked.t = setTimeout(() => inflight && netHint(true), 1200);
+    }
+    if (el) { el.classList.add('is-loading'); el.setAttribute('aria-busy', 'true'); }
+    try { return await fn(); }
+    finally {
+      if (--inflight === 0) { document.body.classList.remove('busy'); clearTimeout(tracked.t); netHint(false); }
+      if (el) { el.classList.remove('is-loading'); el.removeAttribute('aria-busy'); }
+    }
+  }
+
+  // 일반 요청(입장·방 만들기·다운로드 등): 누른 버튼에 로딩 표시
+  const post = (body, el = recentTarget()) => tracked(() => call('POST', body), el);
 
   function applyState(st) {
     if (!st || st.v < version) return; // 늦게 도착한 옛 상태는 무시
     version = st.v;
     clockOffset = st.now - Date.now();
     S = st;
+    hideLoading();
     render();
   }
 
+  // 수업 중 동작(선택·공감·단계 이동 등): 응답 상태를 화면에 반영한 뒤에 로딩 표시를 걷어요
   function act(type, data = {}) {
-    return post({ a: 'act', code: session.code, [IS_HOST ? 'token' : 'pid']: session.id, type, ...data })
-      .then(j => { applyState(j.state); return j; })
+    const el = recentTarget();
+    return tracked(() => call('POST', { a: 'act', code: session.code, [IS_HOST ? 'token' : 'pid']: session.id, type, ...data })
+      .then(j => { applyState(j.state); return j; }), el)
       .catch(e => { toast(e.message); throw e; });
   }
+
+  // 처음 접속/새로고침 때 첫 상태를 받을 때까지 전체 화면 로딩
+  let loadTimer = null;
+  function showLoading(msg) {
+    const o = $('#loading');
+    o.hidden = false;
+    $('#loadMsg').textContent = msg;
+    $('#loadSub').textContent = '';
+    $('#loadReset').hidden = true;
+    clearTimeout(loadTimer);
+    loadTimer = setTimeout(() => {
+      $('#loadSub').textContent = '서버를 깨우는 중이에요. 처음엔 몇 초 걸릴 수 있어요 ⏳';
+      loadTimer = setTimeout(() => { $('#loadReset').hidden = false; }, 6000);
+    }, 3000);
+  }
+  function hideLoading() {
+    clearTimeout(loadTimer);
+    $('#loading').hidden = true;
+  }
+  $('#loadReset').onclick = () => { store.removeItem(KEY); session = null; S = null; version = -1; clearTimeout(pollTimer); hideLoading(); setSync('ok'); };
 
   function h(tag, cls, text) {
     const e = document.createElement(tag);
@@ -97,7 +160,7 @@
     $('#app').innerHTML = `
       <header class="top">
         <div class="brand">🧠 오감 중요도 수업</div>
-        <div class="meta">${IS_HOST ? '' : '<span id="who"></span> · '}방 <b id="roomCode"></b> · <span id="online"></span> <span id="conn" class="conn"></span></div>
+        <div class="meta">${IS_HOST ? '' : '<span id="who"></span> · '}방 <b id="roomCode"></b> · <span id="online"></span> <span id="conn" class="sync ok" title="서버와 연결됨"><i></i></span></div>
       </header>
       <ol class="steps" id="steps">${STEP_NAMES.map((n, i) => `<li><i>${i + 1}</i><span>${n}</span></li>`).join('')}</ol>
       ${hostBar}
@@ -424,11 +487,13 @@
 
   async function poll() {
     if (!session) return;
+    const slowTimer = setTimeout(() => pollFails < 2 && setSync('slow'), 2500); // 확인 요청이 2.5초 넘게 걸리면 '응답 느림' 표시
     try {
       const j = await call('GET', { a: 'state', code: session.code, [IS_HOST ? 'token' : 'pid']: session.id, v: version });
+      clearTimeout(slowTimer);
       if (!session) return;
       pollFails = 0;
-      setConn(true);
+      setSync('ok');
       if (j.gone) return gone();
       if (j.online != null && j.online !== online) {
         online = j.online;
@@ -436,8 +501,9 @@
       }
       if (j.state) applyState(j.state);
     } catch {
+      clearTimeout(slowTimer);
       pollFails++;
-      if (pollFails >= 2) setConn(false);
+      if (pollFails >= 2) setSync('bad');
     }
     // 화면이 가려져 있거나 오류가 나면 간격을 늘려 서버 부담을 줄임
     schedulePoll(Math.min(10000, BASE_MS * (document.hidden ? 3 : 1) * (1 + pollFails)));
@@ -448,19 +514,29 @@
     clearTimeout(pollTimer);
     store.removeItem(KEY);
     session = null; S = null; version = -1;
+    hideLoading();
     $('#app').hidden = true; $('#join').hidden = false;
     toast('방을 찾을 수 없어요. 다시 입장해 주세요.');
   }
 
-  function setConn(ok) {
+  // 연결 상태 표시등: ok(초록) / slow(주황, 응답 느림) / bad(빨강, 재연결 중)
+  const SYNC_TEXT = { ok: '', slow: '응답 느림…', bad: '재연결 중…' };
+  let syncState = 'ok';
+  function setSync(st) {
+    syncState = st;
     const c = $('#conn');
-    if (c) c.textContent = ok ? '' : '⚠ 재연결 중…';
+    if (!c || c.dataset.s === st) return;
+    c.dataset.s = st;
+    c.className = 'sync ' + st;
+    c.title = { ok: '서버와 연결됨', slow: '서버 응답이 느려요', bad: '서버에 연결할 수 없어요. 자동으로 다시 시도해요' }[st];
+    c.replaceChildren(h('i'), ...(SYNC_TEXT[st] ? [document.createTextNode(SYNC_TEXT[st])] : []));
   }
 
   function start(s) {
     session = s;
     store.setItem(KEY, JSON.stringify(s));
     version = -1;
+    showLoading('수업에 접속하는 중…');
     schedulePoll(0);
   }
 
@@ -483,5 +559,5 @@
         .catch(err => toast(err.message));
     };
   }
-  if (session) schedulePoll(0);
+  if (session) { showLoading('수업을 불러오는 중…'); schedulePoll(0); }
 })();

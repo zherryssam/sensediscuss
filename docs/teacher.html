@@ -17,6 +17,14 @@
   </form>
 </main>
 <div id="app" hidden></div>
+<div id="topbar" class="topbar" aria-hidden="true"></div>
+<div id="netHint" class="net-hint" role="status"></div>
+<div id="loading" class="loading" role="alert" aria-live="polite" hidden>
+  <div class="spinner"></div>
+  <p id="loadMsg">불러오는 중…</p>
+  <small id="loadSub"></small>
+  <button class="btn sm" id="loadReset" type="button" hidden>처음 화면으로</button>
+</div>
 <div id="toast" class="toast" role="status"></div>
 <script src="config.js"></script>
 <script src="app.js"></script>

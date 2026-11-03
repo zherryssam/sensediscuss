@@ -168,3 +168,41 @@ body[data-role="host"] .res-row .pe { font-size: 52px; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
 .warn-box { background: #fff3bf; border: 2px solid #f59f00; border-radius: 12px; padding: 10px 12px; font-weight: 700; margin-bottom: 12px; text-align: left; }
+
+/* ===== 로딩 표시 ===== */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { width: 44px; height: 44px; border: 5px solid #d7dcf3; border-top-color: var(--brand); border-radius: 50%; animation: spin .8s linear infinite; }
+
+/* 상단 진행 막대: 서버 응답을 기다리는 동안 */
+.topbar { position: fixed; top: 0; left: 0; right: 0; height: 4px; z-index: 40; overflow: hidden; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.topbar::before { content: ''; position: absolute; top: 0; bottom: 0; width: 40%; background: linear-gradient(90deg, transparent, var(--brand), #22d3ee, transparent); animation: slide 1s ease-in-out infinite; }
+@keyframes slide { from { left: -40%; } to { left: 100%; } }
+body.busy .topbar { opacity: 1; }
+
+.net-hint { position: fixed; left: 50%; top: 14px; transform: translate(-50%, -80px); background: #1b2440; color: #fff; padding: 8px 16px; border-radius: 999px; font-size: 14px; font-weight: 700; z-index: 40; max-width: 92vw; text-align: center; transition: transform .25s; pointer-events: none; }
+.net-hint.show { transform: translate(-50%, 0); }
+
+/* 눌린 버튼: 스피너 표시 + 중복 클릭 차단 */
+.is-loading { position: relative; pointer-events: none; cursor: progress; }
+.btn.is-loading, .mv.is-loading, .like.is-loading, .react.is-loading, .link.is-loading { color: transparent !important; }
+.is-loading::after { content: ''; position: absolute; width: 18px; height: 18px; left: 50%; top: 50%; margin: -9px 0 0 -9px; border: 3px solid var(--ink); border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
+.btn.primary.is-loading::after { border-color: #fff; border-right-color: transparent; }
+.is-loading.like::after, .is-loading.link::after, .is-loading.react::after { width: 12px; height: 12px; margin: -6px 0 0 -6px; border-width: 2px; }
+.pick.is-loading, .opt.is-loading, .res-row.is-loading { opacity: .65; }
+.pick.is-loading::after, .opt.is-loading::after { left: auto; right: 8px; top: 8px; margin: 0; width: 16px; height: 16px; border-width: 3px; }
+
+/* 교사 화면: 처리 중에는 다른 조작 버튼을 잠시 잠가 명령이 꼬이지 않게 */
+body[data-role="host"].busy .btn:not(.is-loading), body[data-role="host"].busy .link:not(.is-loading) { opacity: .55; pointer-events: none; }
+body.busy .join .btn { pointer-events: none; }
+.btn:disabled { cursor: not-allowed; }
+
+/* 접속 상태 표시등 */
+.sync { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; font-size: 13px; }
+.sync i { width: 9px; height: 9px; border-radius: 50%; background: #22c55e; display: inline-block; }
+.sync.slow { color: #b45309; } .sync.slow i { background: #f59e0b; animation: blink 1s steps(2) infinite; }
+.sync.bad { color: #dc2626; } .sync.bad i { background: #ef4444; animation: blink .8s steps(2) infinite; }
+
+/* 첫 접속 전체 화면 로딩 */
+.loading { position: fixed; inset: 0; background: rgba(244,246,251,.94); z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 24px; }
+.loading p { font-size: 20px; font-weight: 800; }
+.loading small { color: var(--muted); min-height: 1.4em; }
